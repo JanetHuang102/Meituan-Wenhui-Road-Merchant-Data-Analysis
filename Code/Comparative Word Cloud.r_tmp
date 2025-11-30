@@ -1,0 +1,99 @@
+# ==========================
+# 0. 加载包
+# ==========================
+library(tm)
+library(reshape2)
+library(wordcloud)
+library(dplyr)
+library(showtext)
+
+# ==========================
+# 1. 中文字体
+# ==========================
+showtext_auto()
+font_add(family = "MSYH", regular = "msyh.ttc")  # 微软雅黑
+
+# ==========================
+# 2. 根据实际情况，读取相应的CSV 文件路径
+# ==========================
+files <- c(
+  "D:/店铺1_freq.csv",
+  "D:/店铺2_freq.csv",
+  "D:/店铺3_freq.csv"
+)
+names(files) <- c(
+  "店铺1",
+  "店铺2",
+  "店铺3"
+)
+
+# ==========================
+# 3. 读取 CSV 并合并
+# ==========================
+all_words <- data.frame()
+for(nm in names(files)){
+  df <- read.csv(files[nm], stringsAsFactors = FALSE, fileEncoding = "GB18030")
+  colnames(df) <- tolower(colnames(df))
+  if(!("word" %in% colnames(df))) df$word <- df[[1]]
+  if(!("freq" %in% colnames(df))) df$freq <- df[[2]]
+  df$title <- nm
+  all_words <- rbind(all_words, df[, c("word","freq","title")])
+}
+
+# ==========================
+# 4. 构建词频矩阵
+# ==========================
+freq_matrix <- acast(all_words, word ~ title, value.var = "freq", fill = 0)
+colnames(freq_matrix) <- trimws(colnames(freq_matrix))
+freq_matrix <- freq_matrix[, names(files)]
+
+# ==========================
+# 5. 设置高饱和度莫兰迪颜色
+# ==========================
+morandi_colors <- c(
+  "#C45A4C",  # 红棕
+  "#4DA19F",  # 青绿
+  "#9276C1"   # 紫灰
+)
+
+# ==========================
+# 6. 保存 PNG
+# ==========================
+png("对比词云.png", width=1200, height=1000, res=150) # 可以替换成相应的店铺种类
+
+par(mar=c(1,1,4,1))
+plot.new()
+plot.window(xlim=c(0,1), ylim=c(0,1))
+
+# ==========================
+# 7. 绘制 Comparison Cloud
+# ==========================
+comparison.cloud(freq_matrix,
+                 colors = morandi_colors,
+                 scale = c(3,0.5),
+                 random.order = FALSE,
+                 max.words = 150,
+                 title.size = 0.001,  # 隐藏默认标题
+                 family = "MSYH")
+
+# ==========================
+# 8. 手动添加文本标签（靠近词云）
+# ==========================
+# 右上（第 1 个）
+text(x=0.72, y=0.65, "店铺1",
+     col=morandi_colors[1], cex=1.2, family="MSYH")
+
+# 左上（第 2 个）
+text(x=0.18, y=0.65, "店铺2",
+     col=morandi_colors[2], cex=1.2, family="MSYH")
+
+# 下方（第 3 个）
+text(x=0.5,  y=0.18, "店铺3",
+     col=morandi_colors[3], cex=1.2, family="MSYH")
+
+# ==========================
+# 9. 添加总标题
+# ==========================
+title("对比词云", line=2.5, cex.main=1.3, family="MSYH")
+
+dev.off()
